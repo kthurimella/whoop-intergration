@@ -31,6 +31,12 @@ def _get_db() -> sqlite3.Connection:
             protein_g INTEGER NOT NULL DEFAULT 0
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS kv_store (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """)
     conn.commit()
     return conn
 
@@ -106,6 +112,32 @@ def get_food_history(days: int = 30) -> list[dict]:
     ).fetchall()
     db.close()
     return [dict(r) for r in rows]
+
+
+# --- Key-value store (for tokens, settings, etc.) ---
+
+def kv_set(key: str, value: str) -> None:
+    db = _get_db()
+    db.execute(
+        "INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)",
+        (key, value),
+    )
+    db.commit()
+    db.close()
+
+
+def kv_get(key: str) -> str | None:
+    db = _get_db()
+    row = db.execute("SELECT value FROM kv_store WHERE key = ?", (key,)).fetchone()
+    db.close()
+    return row["value"] if row else None
+
+
+def kv_delete(key: str) -> None:
+    db = _get_db()
+    db.execute("DELETE FROM kv_store WHERE key = ?", (key,))
+    db.commit()
+    db.close()
 
 
 # --- Weekly summaries ---

@@ -148,6 +148,64 @@
             margin-top: 20px;
             justify-content: center;
         }
+        /* Tip card */
+        .tip-green { border-left: 4px solid var(--green); }
+        .tip-yellow { border-left: 4px solid var(--yellow); }
+        .tip-red { border-left: 4px solid var(--red); }
+        .tip-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+        .tip-message { font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
+        /* Workout list */
+        .workout-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .workout-item:last-child { border-bottom: none; }
+        .workout-name { font-weight: 600; font-size: 0.9rem; }
+        .workout-meta { font-size: 0.8rem; color: var(--muted); }
+        /* Food text input */
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 1rem;
+        }
+        #food-preview {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        #food-preview .item { padding: 2px 0; }
+        #food-preview .total { font-weight: 600; color: var(--text); margin-top: 4px; }
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        .hidden { display: none; }
+        .tab-row {
+            display: flex;
+            gap: 0;
+            margin-bottom: 8px;
+        }
+        .tab {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--muted);
+        }
+        .tab:first-child { border-radius: 8px 0 0 8px; }
+        .tab:last-child { border-radius: 0 8px 8px 0; }
+        .tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
     </style>
 </head>
 <body>
@@ -216,6 +274,14 @@
 </div>
 {% endif %}
 
+<!-- RECOVERY TIP -->
+{% if tip %}
+<div class="card tip-{{ tip.color }}">
+    <div class="tip-title">{{ tip.title }}</div>
+    <div class="tip-message">{{ tip.message }}</div>
+</div>
+{% endif %}
+
 <!-- SLEEP -->
 {% if sleep %}
 <div class="card">
@@ -264,6 +330,25 @@
 </div>
 {% endif %}
 
+<!-- WORKOUTS -->
+{% if workouts %}
+<div class="card">
+    <div class="card-title">Today's Workouts</div>
+    {% for w in workouts %}
+    <div class="workout-item">
+        <div>
+            <div class="workout-name">Workout &middot; {{ w.duration }}</div>
+            <div class="workout-meta">Strain {{ w.strain }} &middot; {{ w.calories }} cal</div>
+        </div>
+        <div style="text-align: right;">
+            <div class="stat-value" style="font-size: 0.95rem;">{{ w.max_hr }}</div>
+            <div class="stat-label">Max HR</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 {% endif %}
 
 <!-- CALORIE DEFICIT -->
@@ -294,6 +379,35 @@
 <!-- LOG FOOD -->
 <div class="card">
     <div class="card-title">Log Today's Food</div>
+
+    {% if has_nutritionix %}
+    <div class="tab-row">
+        <div class="tab active" onclick="switchTab('describe')">Describe Food</div>
+        <div class="tab" onclick="switchTab('manual')">Manual Entry</div>
+    </div>
+
+    <!-- Describe food tab -->
+    <div id="tab-describe">
+        <input type="text" id="food-input" placeholder='e.g. "chipotle bowl with chicken"' autocomplete="off">
+        <div id="food-preview"></div>
+        <div class="form-row" style="margin-top: 8px;">
+            <button onclick="lookupFood()" class="btn btn-outline" id="lookup-btn">Look Up</button>
+            <button onclick="logDescribedFood()" class="btn btn-accent hidden" id="log-food-btn">Log This</button>
+        </div>
+    </div>
+
+    <!-- Manual entry tab -->
+    <div id="tab-manual" class="hidden">
+        <form action="/log" method="POST">
+            <input type="hidden" name="type" value="food">
+            <div class="form-row">
+                <input type="number" name="calories" placeholder="Calories" required>
+                <input type="number" name="protein" placeholder="Protein (g)">
+                <button type="submit" class="btn btn-accent">Log</button>
+            </div>
+        </form>
+    </div>
+    {% else %}
     <form action="/log" method="POST">
         <input type="hidden" name="type" value="food">
         <div class="form-row">
@@ -302,6 +416,8 @@
             <button type="submit" class="btn btn-accent">Log</button>
         </div>
     </form>
+    {% endif %}
+
     {% if today_food %}
     <p style="font-size: 0.8rem; color: var(--muted); margin-top: 8px;">
         Today: {{ today_food.calories }} cal / {{ calorie_target }} target
@@ -345,6 +461,86 @@
     <a href="/logout" class="btn btn-red">Disconnect WHOOP</a>
     {% endif %}
 </div>
+
+<script>
+let lastLookup = null;
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    if (tab === 'describe') {
+        document.getElementById('tab-describe').classList.remove('hidden');
+        document.getElementById('tab-manual').classList.add('hidden');
+        document.querySelectorAll('.tab')[0].classList.add('active');
+    } else {
+        document.getElementById('tab-describe').classList.add('hidden');
+        document.getElementById('tab-manual').classList.remove('hidden');
+        document.querySelectorAll('.tab')[1].classList.add('active');
+    }
+}
+
+function lookupFood() {
+    const input = document.getElementById('food-input');
+    const preview = document.getElementById('food-preview');
+    const btn = document.getElementById('lookup-btn');
+    const logBtn = document.getElementById('log-food-btn');
+    const query = input.value.trim();
+    if (!query) return;
+
+    btn.textContent = 'Looking up...';
+    btn.disabled = true;
+    preview.innerHTML = '';
+    logBtn.classList.add('hidden');
+
+    fetch('/api/food-lookup', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({query: query})
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.textContent = 'Look Up';
+        btn.disabled = false;
+        if (data.error) {
+            preview.innerHTML = '<div style="color: var(--red);">' + data.error + '</div>';
+            return;
+        }
+        lastLookup = data;
+        let html = '';
+        data.items.forEach(item => {
+            html += '<div class="item">' + item.qty + ' ' + item.unit + ' ' + item.name +
+                    ' — ' + item.calories + ' cal, ' + item.protein_g + 'g protein</div>';
+        });
+        html += '<div class="total">' + data.calories + ' cal, ' + data.protein_g + 'g protein</div>';
+        preview.innerHTML = html;
+        logBtn.classList.remove('hidden');
+    })
+    .catch(() => {
+        btn.textContent = 'Look Up';
+        btn.disabled = false;
+        preview.innerHTML = '<div style="color: var(--red);">Lookup failed. Try again.</div>';
+    });
+}
+
+function logDescribedFood() {
+    if (!lastLookup) return;
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/log';
+    form.innerHTML = '<input type="hidden" name="type" value="food">' +
+        '<input type="hidden" name="calories" value="' + lastLookup.calories + '">' +
+        '<input type="hidden" name="protein" value="' + lastLookup.protein_g + '">';
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Allow Enter key to trigger lookup
+const foodInput = document.getElementById('food-input');
+if (foodInput) {
+    foodInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); lookupFood(); }
+    });
+}
+</script>
 
 </body>
 </html>

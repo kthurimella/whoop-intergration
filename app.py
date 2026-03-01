@@ -12,6 +12,7 @@ from flask import Flask, jsonify, redirect, render_template, request, session, u
 
 import auth
 import config
+import food_lookup
 import tracker
 from whoop_client import WhoopClient
 
@@ -60,6 +61,57 @@ def _format_sleep_duration(ms: int | None) -> str:
     return f"{h}h {m}m"
 
 
+def _format_workout_duration(start: str | None, end: str | None) -> str:
+    """Calculate workout duration from ISO timestamps."""
+    if not start or not end:
+        return "--"
+    from datetime import datetime
+    try:
+        fmt = "%Y-%m-%dT%H:%M:%S.%fZ"
+        s = datetime.strptime(start, fmt)
+        e = datetime.strptime(end, fmt)
+        mins = int((e - s).total_seconds() / 60)
+        if mins >= 60:
+            return f"{mins // 60}h {mins % 60}m"
+        return f"{mins}m"
+    except (ValueError, TypeError):
+        return "--"
+
+
+def _recovery_tip(recovery: dict | None, strain: dict | None) -> dict | None:
+    """Generate a recovery-based recommendation."""
+    if not recovery:
+        return None
+
+    score = recovery["score"]
+
+    if score >= 67:
+        tip = {
+            "color": "green",
+            "title": "Green recovery",
+            "message": "You're well recovered. Great day for a hard workout or higher strain.",
+        }
+        if strain and strain["score"] < 5:
+            tip["message"] = "You're well recovered but strain is low. Push it today if you can."
+    elif score >= 34:
+        tip = {
+            "color": "yellow",
+            "title": "Yellow recovery",
+            "message": "Moderate recovery. A light-to-medium workout is fine, but listen to your body.",
+        }
+    else:
+        tip = {
+            "color": "red",
+            "title": "Low recovery",
+            "message": "Your body needs rest. Consider a rest day and focus on sleep and nutrition.",
+        }
+
+    if recovery.get("hrv") and recovery["hrv"] < 30:
+        tip["message"] += " HRV is low — prioritize hydration and early sleep tonight."
+
+    return tip
+
+
 # ── Routes ───────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -76,6 +128,7 @@ def index():
     recovery = None
     sleep = None
     strain = None
+    workouts = []
 
     if whoop_data:
         rec = whoop_data.get("recovery")
@@ -116,10 +169,24 @@ def index():
                 "max_hr": s.get("max_heart_rate", 0),
             }
 
+        # Parse workouts
+        for w in whoop_data.get("workouts") or []:
+            score = w.get("score", {})
+            workouts.append({
+                "sport": w.get("sport_id", 0),
+                "strain": round(score.get("strain", 0), 1),
+                "calories": round(score.get("kilojoule", 0) / 4.184) if score.get("kilojoule") else 0,
+                "avg_hr": score.get("average_heart_rate", 0),
+                "max_hr": score.get("max_heart_rate", 0),
+                "duration": _format_workout_duration(w.get("start"), w.get("end")),
+            })
+
     plan = _plan_progress()
     today_food = tracker.get_food()
     weight_history = tracker.get_weight_history(days=14)
     weekly = tracker.get_weekly_averages(weeks=4)
+    tip = _recovery_tip(recovery, strain)
+    has_nutritionix = bool(food_lookup.NUTRITIONIX_APP_ID)
 
     # Calorie deficit estimate
     deficit = None
@@ -134,11 +201,14 @@ def index():
         recovery=recovery,
         sleep=sleep,
         strain=strain,
+        workouts=workouts,
         plan=plan,
         today_food=today_food,
         weight_history=weight_history,
         weekly=weekly,
         deficit=deficit,
+        tip=tip,
+        has_nutritionix=has_nutritionix,
         calorie_target=config.CALORIE_TARGET,
         protein_target=config.PROTEIN_TARGET_G,
     )
@@ -159,6 +229,13 @@ def log_entry():
         protein = request.form.get("protein", "0")
         if calories:
             tracker.log_food(int(calories), int(protein or 0))
+
+    elif entry_type == "food_text":
+        description = request.form.get("description", "").strip()
+        if description:
+            result = food_lookup.lookup(description)
+            if result:
+                tracker.log_food(result["calories"], result["protein_g"])
 
     return redirect(url_for("index"))
 
@@ -211,6 +288,20 @@ def history():
         food_history=food_history,
         weekly=weekly,
     )
+
+
+@app.route("/api/food-lookup", methods=["POST"])
+def api_food_lookup():
+    """Look up nutrition info from a natural language food description."""
+    description = request.json.get("query", "").strip() if request.json else ""
+    if not description:
+        return jsonify(error="No food description provided"), 400
+
+    result = food_lookup.lookup(description)
+    if not result:
+        return jsonify(error="Could not find nutrition info. Try being more specific."), 404
+
+    return jsonify(result)
 
 
 @app.route("/graphs")
