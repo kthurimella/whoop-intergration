@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #e0e0e0;
+            --muted: #888;
+            --accent: #4ecdc4;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px;
+            padding-bottom: 60px;
+        }
+        h1 { font-size: 1.4rem; margin-bottom: 16px; }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .card-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .row:last-child { border-bottom: none; }
+        .date { color: var(--muted); }
+        a { color: var(--accent); text-decoration: none; }
+        .back { display: block; text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<h1>Full History</h1>
+
+{% if weekly %}
+<div class="card">
+    <div class="card-title">Weekly Averages (12 weeks)</div>
+    {% for w in weekly %}
+    <div class="row">
+        <span class="date">{{ w.week }}</span>
+        <span>
+            {{ w.avg_weight }} lbs
+            {% if w.avg_calories %}&middot; {{ w.avg_calories|int }} cal{% endif %}
+            {% if w.avg_protein %}&middot; {{ w.avg_protein|int }}g{% endif %}
+        </span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if weight_history %}
+<div class="card">
+    <div class="card-title">Weight Log (90 days)</div>
+    {% for entry in weight_history %}
+    <div class="row">
+        <span class="date">{{ entry.date }}</span>
+        <span>{{ entry.weight }} lbs</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if food_history %}
+<div class="card">
+    <div class="card-title">Food Log (90 days)</div>
+    {% for entry in food_history %}
+    <div class="row">
+        <span class="date">{{ entry.date }}</span>
+        <span>{{ entry.calories }} cal {% if entry.protein_g %}&middot; {{ entry.protein_g }}g{% endif %}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<a href="/" class="back">Back to Dashboard</a>
+
+</body>
+</html>

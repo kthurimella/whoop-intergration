@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #e0e0e0;
+            --muted: #888;
+            --accent: #4ecdc4;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 24px 16px;
+            line-height: 1.6;
+        }
+        h1 { font-size: 1.4rem; margin-bottom: 8px; }
+        h2 { font-size: 1.1rem; margin-top: 20px; margin-bottom: 8px; }
+        p { margin-bottom: 12px; color: var(--muted); font-size: 0.9rem; }
+        .updated { color: var(--muted); font-size: 0.8rem; margin-bottom: 20px; }
+        a { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<h1>Privacy Policy</h1>
+<p class="updated">Last updated: March 2025</p>
+
+<h2>Overview</h2>
+<p>This is a personal health tracking dashboard. It is not a commercial product and is intended for use by a single individual.</p>
+
+<h2>Data Collected</h2>
+<p>This app accesses the following data from your WHOOP account via the WHOOP API: recovery scores, heart rate variability, resting heart rate, sleep duration and stages, daily strain, and calories burned. Additionally, you may manually log your weight and food intake, which is stored locally.</p>
+
+<h2>How Data Is Used</h2>
+<p>All data is used solely to display your personal health dashboard. Data from WHOOP is fetched on demand and is not stored permanently — only your OAuth tokens are saved locally to keep you logged in. Weight and food entries are stored in a local SQLite database on the server.</p>
+
+<h2>Data Sharing</h2>
+<p>Your data is never shared with, sold to, or disclosed to any third party. This app communicates only with the WHOOP API to retrieve your data.</p>
+
+<h2>Data Storage &amp; Security</h2>
+<p>OAuth tokens and local tracking data are stored on the server where this app is hosted. No data is sent to any external analytics, advertising, or tracking services.</p>
+
+<h2>Contact</h2>
+<p>If you have questions about this policy, contact the app owner directly.</p>
+
+<p style="margin-top: 24px;"><a href="/">Back to Dashboard</a></p>
+
+</body>
+</html>

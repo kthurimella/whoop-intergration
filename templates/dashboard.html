@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Morning Check-In</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #e0e0e0;
+            --muted: #888;
+            --accent: #4ecdc4;
+            --green: #44c767;
+            --yellow: #f0c040;
+            --red: #e74c3c;
+            --blue: #3498db;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+        h1 { font-size: 1.4rem; margin-bottom: 4px; }
+        .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .card-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+        .big-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .unit { font-size: 0.9rem; color: var(--muted); font-weight: 400; }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        .stat { text-align: center; flex: 1; }
+        .stat-value { font-size: 1.1rem; font-weight: 600; }
+        .stat-label { font-size: 0.7rem; color: var(--muted); }
+
+        /* Recovery color coding */
+        .recovery-green { color: var(--green); }
+        .recovery-yellow { color: var(--yellow); }
+        .recovery-red { color: var(--red); }
+
+        /* Progress bar */
+        .progress-bar {
+            background: var(--border);
+            border-radius: 8px;
+            height: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 8px;
+            background: linear-gradient(90deg, var(--accent), var(--green));
+            transition: width 0.5s;
+        }
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        /* Weight trend */
+        .trend-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 0.85rem;
+        }
+        .trend-date { color: var(--muted); }
+
+        /* Forms */
+        .form-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        input[type="number"] {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 1rem;
+        }
+        button, .btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+        .btn-accent {
+            background: var(--accent);
+            color: #000;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-red {
+            background: transparent;
+            border: 1px solid var(--red);
+            color: var(--red);
+        }
+        .connect-banner {
+            text-align: center;
+            padding: 20px;
+        }
+        .connect-banner p { color: var(--muted); margin-bottom: 12px; font-size: 0.9rem; }
+        .deficit-positive { color: var(--green); }
+        .deficit-negative { color: var(--red); }
+        a { color: var(--accent); }
+        .nav-links {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Morning Check-In</h1>
+<p class="subtitle">Week {{ plan.week }} of {{ plan.total_weeks }}</p>
+
+<!-- PLAN PROGRESS -->
+<div class="card">
+    <div class="card-title">15-Week Progress</div>
+    <div class="progress-bar">
+        <div class="progress-fill" style="width: {{ plan.pct }}%"></div>
+    </div>
+    <div class="progress-labels">
+        <span>{{ plan.start_weight }} lbs</span>
+        <span>{{ plan.current_weight }} lbs</span>
+        <span>{{ plan.goal_weight }} lbs</span>
+    </div>
+    <div class="stat-row" style="margin-top: 12px;">
+        <div class="stat">
+            <div class="stat-value">{{ plan.lost }}</div>
+            <div class="stat-label">lbs lost</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{{ plan.remaining }}</div>
+            <div class="stat-label">lbs to go</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{% if plan.ahead > 0 %}+{% endif %}{{ plan.ahead }}</div>
+            <div class="stat-label">vs expected</div>
+        </div>
+    </div>
+</div>
+
+<!-- WHOOP SECTION -->
+{% if not whoop_connected %}
+<div class="card connect-banner">
+    <p>Connect your WHOOP to see recovery, sleep, and strain data.</p>
+    <a href="/login" class="btn btn-accent">Connect WHOOP</a>
+</div>
+{% else %}
+
+<!-- RECOVERY -->
+{% if recovery %}
+<div class="card">
+    <div class="card-title">Recovery</div>
+    <div class="big-number {% if recovery.score >= 67 %}recovery-green{% elif recovery.score >= 34 %}recovery-yellow{% else %}recovery-red{% endif %}">
+        {{ recovery.score }}%
+    </div>
+    <div class="stat-row">
+        <div class="stat">
+            <div class="stat-value">{{ recovery.hrv }}</div>
+            <div class="stat-label">HRV (ms)</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{{ recovery.resting_hr }}</div>
+            <div class="stat-label">Resting HR</div>
+        </div>
+        {% if recovery.spo2 %}
+        <div class="stat">
+            <div class="stat-value">{{ recovery.spo2 }}%</div>
+            <div class="stat-label">SpO2</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- SLEEP -->
+{% if sleep %}
+<div class="card">
+    <div class="card-title">Sleep</div>
+    <div class="big-number">{{ sleep.duration }}</div>
+    <div class="stat-row">
+        <div class="stat">
+            <div class="stat-value">{{ sleep.performance }}%</div>
+            <div class="stat-label">Performance</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{{ sleep.deep }}</div>
+            <div class="stat-label">Deep</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{{ sleep.rem }}</div>
+            <div class="stat-label">REM</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{{ sleep.efficiency }}%</div>
+            <div class="stat-label">Efficiency</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- STRAIN -->
+{% if strain %}
+<div class="card">
+    <div class="card-title">Strain</div>
+    <div class="big-number" style="color: var(--blue);">{{ strain.score }}</div>
+    <div class="stat-row">
+        <div class="stat">
+            <div class="stat-value">{{ strain.calories }}</div>
+            <div class="stat-label">Calories Burned</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{{ strain.avg_hr }}</div>
+            <div class="stat-label">Avg HR</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{{ strain.max_hr }}</div>
+            <div class="stat-label">Max HR</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<!-- CALORIE DEFICIT -->
+{% if deficit is not none %}
+<div class="card">
+    <div class="card-title">Calorie Deficit</div>
+    <div class="big-number {% if deficit > 0 %}deficit-positive{% else %}deficit-negative{% endif %}">
+        {% if deficit > 0 %}+{% endif %}{{ deficit }} <span class="unit">cal</span>
+    </div>
+    <p style="font-size: 0.8rem; color: var(--muted); margin-top: 4px;">
+        {{ strain.calories }} burned &minus; {{ today_food.calories }} eaten
+    </p>
+</div>
+{% endif %}
+
+<!-- LOG WEIGHT -->
+<div class="card">
+    <div class="card-title">Log Today's Weight</div>
+    <form action="/log" method="POST">
+        <input type="hidden" name="type" value="weight">
+        <div class="form-row">
+            <input type="number" name="weight" step="0.1" placeholder="e.g. 181.4" required>
+            <button type="submit" class="btn btn-accent">Log</button>
+        </div>
+    </form>
+</div>
+
+<!-- LOG FOOD -->
+<div class="card">
+    <div class="card-title">Log Today's Food</div>
+    <form action="/log" method="POST">
+        <input type="hidden" name="type" value="food">
+        <div class="form-row">
+            <input type="number" name="calories" placeholder="Calories" required>
+            <input type="number" name="protein" placeholder="Protein (g)">
+            <button type="submit" class="btn btn-accent">Log</button>
+        </div>
+    </form>
+    {% if today_food %}
+    <p style="font-size: 0.8rem; color: var(--muted); margin-top: 8px;">
+        Today: {{ today_food.calories }} cal / {{ calorie_target }} target
+        {% if today_food.protein_g %} &middot; {{ today_food.protein_g }}g / {{ protein_target }}g protein{% endif %}
+    </p>
+    {% endif %}
+</div>
+
+<!-- RECENT WEIGHT -->
+{% if weight_history %}
+<div class="card">
+    <div class="card-title">Recent Weigh-Ins</div>
+    {% for entry in weight_history[:7] %}
+    <div class="trend-row">
+        <span class="trend-date">{{ entry.date }}</span>
+        <span>{{ entry.weight }} lbs</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- WEEKLY AVERAGES -->
+{% if weekly %}
+<div class="card">
+    <div class="card-title">Weekly Averages</div>
+    {% for w in weekly %}
+    <div class="trend-row">
+        <span class="trend-date">{{ w.week }}</span>
+        <span>{{ w.avg_weight }} lbs
+            {% if w.avg_calories %}&middot; {{ w.avg_calories|int }} cal{% endif %}
+        </span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="nav-links">
+    <a href="/history" class="btn btn-outline">Full History</a>
+    {% if whoop_connected %}
+    <a href="/logout" class="btn btn-red">Disconnect WHOOP</a>
+    {% endif %}
+</div>
+
+</body>
+</html>
