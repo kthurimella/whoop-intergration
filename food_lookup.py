@@ -1,24 +1,24 @@
 """
-Natural language food lookup via the API Ninjas Nutrition API.
+Natural language food lookup via the CalorieNinjas API.
 
 Usage:
     result = lookup("chipotle bowl with chicken and rice")
     # Returns: {"calories": 735, "protein_g": 52, "items": [...]}
 
-Requires API_NINJAS_KEY env var.
-Free tier (non-commercial): https://api-ninjas.com/api/nutrition
+Requires CALORIENINJAS_API_KEY env var.
+Free tier (10k requests/month): https://calorieninjas.com/api
 """
 
 import os
 
 import requests
 
-API_NINJAS_KEY = os.getenv("API_NINJAS_KEY", "")
-API_NINJAS_URL = "https://api.api-ninjas.com/v1/nutrition"
+CALORIENINJAS_API_KEY = os.getenv("CALORIENINJAS_API_KEY", "")
+CALORIENINJAS_URL = "https://api.calorieninjas.com/v1/nutrition"
 
 
 def is_configured() -> bool:
-    return bool(API_NINJAS_KEY)
+    return bool(CALORIENINJAS_API_KEY)
 
 
 def lookup(query: str) -> dict | None:
@@ -27,13 +27,13 @@ def lookup(query: str) -> dict | None:
     Returns dict with total calories, protein_g, and individual items,
     or None if the lookup fails.
     """
-    if not API_NINJAS_KEY:
+    if not CALORIENINJAS_API_KEY:
         return None
 
     try:
         resp = requests.get(
-            API_NINJAS_URL,
-            headers={"X-Api-Key": API_NINJAS_KEY},
+            CALORIENINJAS_URL,
+            headers={"X-Api-Key": CALORIENINJAS_API_KEY},
             params={"query": query},
             timeout=15,
         )
@@ -42,8 +42,7 @@ def lookup(query: str) -> dict | None:
     except requests.RequestException:
         return None
 
-    # API returns a list directly (not wrapped in "items" key)
-    items_raw = data if isinstance(data, list) else data.get("items", [])
+    items_raw = data.get("items", [])
     if not items_raw:
         return None
 
