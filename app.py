@@ -186,7 +186,7 @@ def index():
     weight_history = tracker.get_weight_history(days=14)
     weekly = tracker.get_weekly_averages(weeks=4)
     tip = _recovery_tip(recovery, strain)
-    has_nutritionix = bool(food_lookup.NUTRITIONIX_APP_ID)
+    has_nutritionix = food_lookup.is_configured()
 
     # Calorie deficit estimate
     deficit = None
