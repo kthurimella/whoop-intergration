@@ -52,13 +52,13 @@ def lookup(query: str) -> dict | None:
     items = []
 
     for f in items_raw:
-        cal = round(f.get("calories", 0))
-        pro = round(f.get("protein_g", 0))
+        cal = round(float(f.get("calories", 0)))
+        pro = round(float(f.get("protein_g", 0)))
         total_cal += cal
         total_protein += pro
         items.append({
             "name": f.get("name", "unknown"),
-            "qty": round(f.get("serving_size_g", 100)),
+            "qty": round(float(f.get("serving_size_g", 100))),
             "unit": "g",
             "calories": cal,
             "protein_g": pro,
