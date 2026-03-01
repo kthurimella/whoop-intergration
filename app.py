@@ -193,6 +193,12 @@ def logout():
     return redirect(url_for("index"))
 
 
+@app.route("/privacy")
+def privacy():
+    """Privacy policy page (required by WHOOP OAuth)."""
+    return render_template("privacy.html")
+
+
 @app.route("/history")
 def history():
     """Full history view."""
