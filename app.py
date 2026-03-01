@@ -8,7 +8,7 @@ Deploy to Render/Railway and access from your phone.
 import secrets
 from datetime import date, timedelta
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 
 import auth
 import config
@@ -210,6 +210,39 @@ def history():
         weight_history=weight_history,
         food_history=food_history,
         weekly=weekly,
+    )
+
+
+@app.route("/graphs")
+def graphs():
+    """Interactive charts page."""
+    return render_template("graphs.html")
+
+
+@app.route("/api/graph-data")
+def graph_data():
+    """Return weight + food history as JSON for Chart.js."""
+    weight_history = tracker.get_weight_history(days=90)
+    food_history = tracker.get_food_history(days=90)
+
+    # Reverse so oldest-first (chronological for charts)
+    weight_history.reverse()
+    food_history.reverse()
+
+    return jsonify(
+        weight={
+            "dates": [w["date"] for w in weight_history],
+            "values": [w["weight"] for w in weight_history],
+            "goal": config.GOAL_WEIGHT,
+            "start": config.START_WEIGHT,
+        },
+        food={
+            "dates": [f["date"] for f in food_history],
+            "calories": [f["calories"] for f in food_history],
+            "protein": [f["protein_g"] for f in food_history],
+            "calorie_target": config.CALORIE_TARGET,
+            "protein_target": config.PROTEIN_TARGET_G,
+        },
     )
 
 
