@@ -7,17 +7,19 @@ Handles the full browser-based OAuth2 flow:
   3. Exchanges code for access + refresh tokens
   4. Auto-refreshes tokens when they expire
 
-Tokens are saved to disk so you only log in once.
+Tokens are saved to the SQLite database so they persist across restarts.
 """
 
 import json
 import time
-from pathlib import Path
 from urllib.parse import urlencode
 
 import requests
 
 import config
+import tracker
+
+_TOKEN_KEY = "whoop_tokens"
 
 
 def get_auth_url(state: str = "") -> str:
@@ -95,20 +97,18 @@ def is_authenticated() -> bool:
 
 def clear_tokens():
     """Delete saved tokens (logout)."""
-    path = Path(config.TOKEN_PATH)
-    if path.exists():
-        path.unlink()
+    tracker.kv_delete(_TOKEN_KEY)
 
 
 def _save_tokens(tokens: dict):
-    Path(config.TOKEN_PATH).write_text(json.dumps(tokens, indent=2))
+    tracker.kv_set(_TOKEN_KEY, json.dumps(tokens))
 
 
 def _load_tokens() -> dict | None:
-    path = Path(config.TOKEN_PATH)
-    if not path.exists():
+    raw = tracker.kv_get(_TOKEN_KEY)
+    if not raw:
         return None
     try:
-        return json.loads(path.read_text())
-    except (json.JSONDecodeError, OSError):
+        return json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
         return None
