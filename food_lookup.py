@@ -1,21 +1,24 @@
 """
-Natural language food lookup via the Nutritionix API.
+Natural language food lookup via the CalorieNinjas API.
 
 Usage:
     result = lookup("chipotle bowl with chicken and rice")
     # Returns: {"calories": 735, "protein_g": 52, "items": [...]}
 
-Requires NUTRITIONIX_APP_ID and NUTRITIONIX_API_KEY env vars.
-Free tier: https://developer.nutritionix.com/
+Requires CALORIENINJAS_API_KEY env var.
+Free tier (10k requests/month): https://calorieninjas.com/api
 """
 
 import os
 
 import requests
 
-NUTRITIONIX_APP_ID = os.getenv("NUTRITIONIX_APP_ID", "")
-NUTRITIONIX_API_KEY = os.getenv("NUTRITIONIX_API_KEY", "")
-NUTRITIONIX_URL = "https://trackapi.nutritionix.com/v2/natural/nutrients"
+CALORIENINJAS_API_KEY = os.getenv("CALORIENINJAS_API_KEY", "")
+CALORIENINJAS_URL = "https://api.calorieninjas.com/v1/nutrition"
+
+
+def is_configured() -> bool:
+    return bool(CALORIENINJAS_API_KEY)
 
 
 def lookup(query: str) -> dict | None:
@@ -24,18 +27,14 @@ def lookup(query: str) -> dict | None:
     Returns dict with total calories, protein_g, and individual items,
     or None if the lookup fails.
     """
-    if not NUTRITIONIX_APP_ID or not NUTRITIONIX_API_KEY:
+    if not CALORIENINJAS_API_KEY:
         return None
 
     try:
-        resp = requests.post(
-            NUTRITIONIX_URL,
-            headers={
-                "x-app-id": NUTRITIONIX_APP_ID,
-                "x-app-key": NUTRITIONIX_API_KEY,
-                "Content-Type": "application/json",
-            },
-            json={"query": query},
+        resp = requests.get(
+            CALORIENINJAS_URL,
+            headers={"X-Api-Key": CALORIENINJAS_API_KEY},
+            params={"query": query},
             timeout=15,
         )
         resp.raise_for_status()
@@ -43,23 +42,23 @@ def lookup(query: str) -> dict | None:
     except requests.RequestException:
         return None
 
-    foods = data.get("foods", [])
-    if not foods:
+    items_raw = data.get("items", [])
+    if not items_raw:
         return None
 
     total_cal = 0
     total_protein = 0
     items = []
 
-    for f in foods:
-        cal = round(f.get("nf_calories", 0))
-        pro = round(f.get("nf_protein", 0))
+    for f in items_raw:
+        cal = round(f.get("calories", 0))
+        pro = round(f.get("protein_g", 0))
         total_cal += cal
         total_protein += pro
         items.append({
-            "name": f.get("food_name", "unknown"),
-            "qty": f.get("serving_qty", 1),
-            "unit": f.get("serving_unit", "serving"),
+            "name": f.get("name", "unknown"),
+            "qty": round(f.get("serving_size_g", 100)),
+            "unit": "g",
             "calories": cal,
             "protein_g": pro,
         })
